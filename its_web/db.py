@@ -43,6 +43,15 @@ intentos = Table(
 )
 
 
+consentimientos = Table(
+    'consentimientos', metadata,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('usuario_id', Integer, ForeignKey('usuarios.id'), nullable=False, index=True),
+    Column('version_aviso', String(20), nullable=False),
+    Column('aceptado_en', Integer, nullable=False),
+)
+
+
 def _url():
     try:
         import streamlit as st
@@ -125,3 +134,9 @@ def actualizar_intento(iid, **campos):
 def todos_los_intentos():
     with motor_bd().connect() as c:
         return [dict(r) for r in c.execute(select(intentos)).mappings()]
+
+
+# ---------------- consentimiento de tratamiento de datos ----------------
+def registrar_consentimiento(uid, version):
+    with motor_bd().begin() as c:
+        c.execute(insert(consentimientos).values(usuario_id=uid, version_aviso=version, aceptado_en=ahora()))

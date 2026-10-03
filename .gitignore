@@ -3,3 +3,9 @@ __pycache__/
 its_local.db
 .streamlit/secrets.toml
 .env
+
+# Datos (pesados o con licencia propia): se regeneran con pipeline/
+datasets/
+vle_features_agregadas.csv
+dataset_estudiante_corte*.csv
+modelo_diagnostico_final.pkl

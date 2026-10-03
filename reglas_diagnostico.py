@@ -75,3 +75,43 @@ def diagnosticar_estado_vivo(tiempo_segundos, n_intentos, exito_fallo, dias_atra
             and n_intentos <= UMBRAL_DOMINIO_INTENTOS):
         return ESTADO_DOMINIO
     return ESTADO_NORMAL
+
+
+# ---------------------------------------------------------------------------
+# Diagnóstico en vivo CALIBRADO CON DATOS (reemplaza a diagnosticar_estado_vivo en la app).
+#
+# Índice de rendimiento = media móvil exponencial de (éxito al primer envío − P(éxito) predicha
+# por el recomendador). Mide si el estudiante rinde por encima o por debajo de lo esperado
+# para la dificultad de los problemas que resolvió.
+# Los umbrales se calcularon con usuarios reales de Codeforces no usados en el entrenamiento,
+# de modo que la proporción de estados reproduzca la observada en OULAD
+# (entrenar_recomendador.py -> calibracion_diagnostico.json).
+# ---------------------------------------------------------------------------
+import json
+import os
+
+_CALIBRACION = None
+
+
+def calibracion(ruta='calibracion_diagnostico.json'):
+    global _CALIBRACION
+    if _CALIBRACION is None:
+        if not os.path.exists(ruta):
+            raise FileNotFoundError(f'No se encontró {ruta}. Ejecuta entrenar_recomendador.py.')
+        with open(ruta, encoding='utf-8') as f:
+            _CALIBRACION = json.load(f)
+    return _CALIBRACION
+
+
+def actualizar_indice(indice, exito_primer_envio, p_exito):
+    alfa = calibracion()['alfa']
+    return alfa * ((1.0 if exito_primer_envio else 0.0) - p_exito) + (1 - alfa) * indice
+
+
+def estado_por_indice(indice):
+    c = calibracion()
+    if indice < c['umbral_riesgo']:
+        return ESTADO_RIESGO
+    if indice > c['umbral_dominio']:
+        return ESTADO_DOMINIO
+    return ESTADO_NORMAL

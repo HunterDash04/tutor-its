@@ -1,0 +1,12 @@
+{
+  "alfa": 0.2,
+  "umbral_riesgo": -0.04807395949465963,
+  "umbral_dominio": 0.17344820459442387,
+  "prevalencia_objetivo": {
+    "Riesgo": 0.375,
+    "Normal": 0.502,
+    "Dominio": 0.123
+  },
+  "razon_verosimilitud": 17.9979660375393,
+  "p_valor": 2.211411262848131e-05
+}

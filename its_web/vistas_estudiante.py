@@ -4,7 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from its_web import db, servicio
+from its_web import db, seguridad, servicio
 from its_web.codeforces import ErrorCodeforces, validar_handle, verificar_envios
 from topicos_codeforces import categorias_de, url_problema
 
@@ -189,3 +189,18 @@ def cuenta(usuario):
                 st.success('Cuenta de Codeforces vinculada.')
             except ErrorCodeforces as e:
                 st.error(f'No se pudo vincular: {e}')
+
+    st.markdown('#### Cambiar contraseña')
+    with st.form('cambiar_clave', clear_on_submit=True):
+        actual = st.text_input('Contraseña actual', type='password')
+        nueva = st.text_input('Nueva contraseña (mínimo 8 caracteres)', type='password')
+        nueva2 = st.text_input('Repite la nueva contraseña', type='password')
+        cambiar = st.form_submit_button('Cambiar contraseña')
+    if cambiar:
+        error = None if seguridad.verificar(actual, usuario['hash']) else 'La contraseña actual no es correcta.'
+        error = error or seguridad.validar_clave(nueva) or (None if nueva == nueva2 else 'Las contraseñas nuevas no coinciden.')
+        if error:
+            st.error(error)
+        else:
+            db.actualizar_usuario(usuario['id'], hash=seguridad.hashear(nueva))
+            st.success('Contraseña actualizada.')

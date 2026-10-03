@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from its_web import db, servicio
+from its_web import db, seguridad, servicio
 from its_web.vistas_estudiante import _fecha, progreso
 
 
@@ -33,6 +33,14 @@ def estudiantes():
     st.markdown('#### Detalle de un estudiante')
     elegido = st.selectbox('Estudiante', [u['usuario'] for u in lista])
     u = next(x for x in lista if x['usuario'] == elegido)
+    with st.expander('Restablecer contraseña de este estudiante'):
+        st.caption('Genera una contraseña temporal para entregársela al estudiante. '
+                   'Luego él puede cambiarla desde "Mi cuenta".')
+        if st.button(f'Generar contraseña temporal para {u["usuario"]}'):
+            temporal = seguridad.clave_temporal()
+            db.actualizar_usuario(u['id'], hash=seguridad.hashear(temporal))
+            st.success('Contraseña restablecida. Cópiala ahora: no se volverá a mostrar.')
+            st.code(temporal, language=None)
     if u['habilidad_inicial'] is None:
         st.info('Este estudiante aún no completó su perfil inicial.')
     else:

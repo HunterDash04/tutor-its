@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from motor_recomendacion import EstadoEstudiante, MotorRecomendacion, META_POR_ESTADO
-from reglas_diagnostico import diagnosticar_estado_vivo, ESTADO_NORMAL
+from reglas_diagnostico import ESTADO_NORMAL, actualizar_indice, estado_por_indice
 from topicos_codeforces import CATEGORIAS, categorias_de
 from its_web import db
 
@@ -26,6 +26,7 @@ def reconstruir(usuario, historial):
     """Recorre los intentos registrados en orden y devuelve (estado, estado_cognitivo, pendiente)."""
     est = EstadoEstudiante(habilidad_inicial=usuario['habilidad_inicial'] or 1000.0)
     estado_cog = ESTADO_NORMAL
+    est.indice_rendimiento = 0.0
     pendiente = None
     for it in historial:
         est.vistos.add(it['id_problema'])
@@ -34,21 +35,24 @@ def reconstruir(usuario, historial):
             continue
         if it['resultado'] in ('resuelto', 'no_resuelto'):
             cats = categorias_de(it['etiquetas'])
-            est.actualizar(it['rating'], cats, _exito_primer_envio(it), it['id_problema'])
-            if it['estado_resultante']:
-                estado_cog = it['estado_resultante']
+            exito = _exito_primer_envio(it)
+            est.actualizar(it['rating'], cats, exito, it['id_problema'])
+            # diagnóstico calibrado: rendimiento real frente a la probabilidad que predijo el modelo
+            est.indice_rendimiento = actualizar_indice(est.indice_rendimiento, exito, it['p_exito'])
+            estado_cog = estado_por_indice(est.indice_rendimiento)
     return est, estado_cog, pendiente
 
 
 def motivo(estado_cog, categoria, meta):
     if estado_cog.startswith('Riesgo'):
-        return (f'Tu último resultado indica que conviene afianzar bases. Se eligió un problema de '
-                f'**{categoria}** (tu categoría más débil) con una probabilidad de éxito cercana a {meta:.0%}.')
+        return (f'Tus últimos resultados estuvieron por debajo de lo esperado para la dificultad de los problemas. '
+                f'Se eligió un problema de **{categoria}** (tu categoría más débil) con una probabilidad de éxito '
+                f'cercana a {meta:.0%} para afianzar bases.')
     if estado_cog.startswith('Dominio'):
-        return (f'Vas muy bien: se eligió un reto en **{categoria}**, una categoría que has practicado poco, '
-                f'con una probabilidad de éxito cercana a {meta:.0%} para que te exija.')
-    return (f'Progreso estable: se eligió un problema de **{categoria}**, tu categoría más débil hasta ahora, '
-            f'con una probabilidad de éxito cercana a {meta:.0%}.')
+        return (f'Tus últimos resultados superaron lo esperado: se eligió un reto en **{categoria}**, una categoría '
+                f'que has practicado poco, con una probabilidad de éxito cercana a {meta:.0%} para que te exija.')
+    return (f'Tus resultados van acorde a lo esperado. Se eligió un problema de **{categoria}**, tu categoría más '
+            f'débil hasta ahora, con una probabilidad de éxito cercana a {meta:.0%}.')
 
 
 def recomendacion_actual(motor, usuario):
@@ -69,14 +73,11 @@ def registrar(usuario, intento, resultado, envios, modo, tiempo_s=None):
     """resultado: 'resuelto' | 'no_resuelto' | 'omitido'. Devuelve el diagnóstico obtenido."""
     if tiempo_s is None:
         tiempo_s = max(0, db.ahora() - intento['mostrado_en'])
-    diag = None
-    if resultado != 'omitido':
-        diag = diagnosticar_estado_vivo(tiempo_s, max(int(envios), 1), 1 if resultado == 'resuelto' else 0, dias_atraso=0)
     db.actualizar_intento(intento['id'], registrado_en=db.ahora(), resultado=resultado,
-                          envios=int(envios) if envios is not None else None, tiempo_s=int(tiempo_s),
-                          modo=modo, estado_resultante=diag)
-    est, _, _ = reconstruir(usuario, db.intentos_de(usuario['id']))
-    db.actualizar_intento(intento['id'], habilidad_despues=float(est.habilidad))
+                          envios=int(envios) if envios is not None else None, tiempo_s=int(tiempo_s), modo=modo)
+    est, estado_cog, _ = reconstruir(usuario, db.intentos_de(usuario['id']))
+    diag = None if resultado == 'omitido' else estado_cog
+    db.actualizar_intento(intento['id'], habilidad_despues=float(est.habilidad), estado_resultante=diag)
     return diag
 
 

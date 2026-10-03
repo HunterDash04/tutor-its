@@ -1,6 +1,7 @@
 import streamlit as st
 
 from its_web import db, seguridad, servicio, vistas_docente, vistas_estudiante
+from its_web.privacidad import TEXTO_AVISO, VERSION_AVISO
 
 NOMBRE_APP = 'Tutor Inteligente de Programación'
 ICONO_APP = ':material/school:'
@@ -61,22 +62,29 @@ def _formulario_acceso():
             else:
                 st.error('Usuario o contraseña incorrectos.')
     with registrarse:
+        with st.expander('Aviso de privacidad y tratamiento de datos personales'):
+            st.markdown(TEXTO_AVISO)
         with st.form('registro'):
             usuario = st.text_input('Elige un usuario')
             nombre = st.text_input('Nombre completo')
             clave = st.text_input('Contraseña (mínimo 8 caracteres)', type='password')
             clave2 = st.text_input('Repite la contraseña', type='password')
+            acepta = st.checkbox('He leído y acepto el aviso de privacidad y tratamiento de datos personales')
             ok = st.form_submit_button('Crear cuenta', type='primary', width='stretch')
         if ok:
             error = seguridad.validar_usuario(usuario) or seguridad.validar_clave(clave)
             if not error and clave != clave2:
                 error = 'Las contraseñas no coinciden.'
+            if not error and not acepta:
+                error = 'Para crear tu cuenta debes aceptar el aviso de privacidad.'
             if not error and db.buscar_usuario(usuario):
                 error = 'Ese usuario ya existe.'
             if error:
                 st.error(error)
             else:
-                st.session_state['uid'] = db.crear_usuario(usuario, seguridad.hashear(clave), nombre.strip())
+                uid = db.crear_usuario(usuario, seguridad.hashear(clave), nombre.strip())
+                db.registrar_consentimiento(uid, VERSION_AVISO)
+                st.session_state['uid'] = uid
                 st.rerun()
 
 

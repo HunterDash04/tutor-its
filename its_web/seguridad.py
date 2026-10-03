@@ -2,6 +2,8 @@ import hashlib
 import hmac
 import os
 import re
+import secrets
+import string
 
 ITERACIONES = 200_000
 
@@ -31,3 +33,9 @@ def validar_clave(clave: str):
     if len(clave or '') < 8:
         return 'La contraseña debe tener al menos 8 caracteres.'
     return None
+
+
+def clave_temporal(largo=10):
+    """Contraseña aleatoria para que el docente restablezca la cuenta de un estudiante."""
+    alfabeto = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alfabeto) for _ in range(largo))
