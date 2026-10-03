@@ -35,15 +35,23 @@ def asegurar_docente():
 
 
 def acceso():
-    st.title(f'{ICONO_APP} {NOMBRE_APP}')
+    # Columna central angosta para que el inicio de sesión no ocupe todo el ancho
+    _, centro, _ = st.columns([1, 1.3, 1])
+    with centro:
+        _formulario_acceso()
+
+
+def _formulario_acceso():
+    st.write('')
+    st.markdown(f'## {ICONO_APP} {NOMBRE_APP}', text_alignment='center')
     st.caption('Rutas de práctica personalizadas con problemas reales de Codeforces, '
-               'adaptadas a tu nivel después de cada ejercicio.')
+               'adaptadas a tu nivel después de cada ejercicio.', text_alignment='center')
     entrar, registrarse = st.tabs(['Iniciar sesión', 'Crear cuenta'])
     with entrar:
         with st.form('login'):
             usuario = st.text_input('Usuario')
             clave = st.text_input('Contraseña', type='password')
-            ok = st.form_submit_button('Entrar', type='primary')
+            ok = st.form_submit_button('Entrar', type='primary', width='stretch')
         if ok:
             u = db.buscar_usuario(usuario)
             if u and seguridad.verificar(clave, u['hash']):
@@ -58,7 +66,7 @@ def acceso():
             nombre = st.text_input('Nombre completo')
             clave = st.text_input('Contraseña (mínimo 8 caracteres)', type='password')
             clave2 = st.text_input('Repite la contraseña', type='password')
-            ok = st.form_submit_button('Crear cuenta', type='primary')
+            ok = st.form_submit_button('Crear cuenta', type='primary', width='stretch')
         if ok:
             error = seguridad.validar_usuario(usuario) or seguridad.validar_clave(clave)
             if not error and clave != clave2:
