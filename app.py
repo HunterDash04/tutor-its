@@ -1,16 +1,12 @@
-"""
-Aplicación web del sistema de recomendación de rutas de aprendizaje en programación.
-
-Ejecutar en local:   streamlit run app.py
-Base de datos: usa DATABASE_URL (secretos de Streamlit) si existe; si no, SQLite local.
-"""
 import streamlit as st
 
 from its_web import db, seguridad, servicio, vistas_docente, vistas_estudiante
 
 NOMBRE_APP = 'Tutor Inteligente de Programación'
+ICONO_APP = ':material/school:'
+ICONO_FAVICON = '🎓'
 
-st.set_page_config(page_title=NOMBRE_APP, page_icon='🧭', layout='wide')
+st.set_page_config(page_title=NOMBRE_APP, page_icon=ICONO_FAVICON, layout='wide')
 
 
 @st.cache_resource(show_spinner='Cargando el modelo de recomendación...')
@@ -31,7 +27,7 @@ def asegurar_docente():
 
 
 def acceso():
-    st.title(f'🧭 {NOMBRE_APP}')
+    st.title(f'{ICONO_APP} {NOMBRE_APP}')
     st.caption('Rutas de práctica personalizadas con problemas reales de Codeforces, '
                'adaptadas a tu nivel después de cada ejercicio.')
     entrar, registrarse = st.tabs(['Iniciar sesión', 'Crear cuenta'])
@@ -70,7 +66,7 @@ def acceso():
 
 def barra_lateral(u):
     with st.sidebar:
-        st.markdown(f'### 🧭 {NOMBRE_APP}')
+        st.markdown(f'### {ICONO_APP} {NOMBRE_APP}')
         st.write(f"**{u['nombre'] or u['usuario']}**")
         st.caption('Docente' if u['rol'] == 'docente' else 'Estudiante')
         if st.button('Cerrar sesión', width='stretch'):
