@@ -5,6 +5,31 @@ import urllib.request
 API = 'https://codeforces.com/api/'
 IGNORADOS = {'COMPILATION_ERROR', 'SKIPPED', 'TESTING', 'REJECTED'}
 
+VEREDICTOS = {
+    'OK': 'Aceptado',
+    'WRONG_ANSWER': 'Respuesta incorrecta',
+    'TIME_LIMIT_EXCEEDED': 'Tiempo límite excedido',
+    'MEMORY_LIMIT_EXCEEDED': 'Memoria excedida',
+    'RUNTIME_ERROR': 'Error en tiempo de ejecución',
+    'IDLENESS_LIMIT_EXCEEDED': 'Límite de inactividad excedido',
+    'PRESENTATION_ERROR': 'Error de formato de salida',
+    'CHALLENGED': 'Solución hackeada',
+    'PARTIAL': 'Parcialmente correcto',
+    'FAILED': 'Fallido',
+    'SECURITY_VIOLATED': 'Violación de seguridad',
+    'CRASHED': 'Error del juez',
+    'INPUT_PREPARATION_CRASHED': 'Error del juez',
+}
+
+
+def _traducir_error(comentario):
+    c = (comentario or '').lower()
+    if 'not found' in c:
+        return 'Ese usuario no existe en Codeforces.'
+    if 'limit' in c:
+        return 'Codeforces recibió demasiadas consultas. Espera unos segundos e intenta de nuevo.'
+    return 'Codeforces no pudo procesar la consulta. Intenta de nuevo en un momento.'
+
 
 class ErrorCodeforces(Exception):
     pass
@@ -20,11 +45,11 @@ def _llamar(metodo, **params):
         try:
             datos = json.loads(e.read().decode('utf-8'))
         except Exception:
-            raise ErrorCodeforces(f'Codeforces respondió con error HTTP {e.code}.')
+            raise ErrorCodeforces('Codeforces no está disponible en este momento. Intenta más tarde.')
     except Exception:
         raise ErrorCodeforces('No se pudo conectar con Codeforces. Intenta de nuevo en un momento.')
     if datos.get('status') != 'OK':
-        raise ErrorCodeforces(datos.get('comment', 'Codeforces no pudo procesar la consulta.'))
+        raise ErrorCodeforces(_traducir_error(datos.get('comment', '')))
     return datos['result']
 
 
@@ -54,7 +79,7 @@ def verificar_envios(handle, id_problema, desde_unix):
     for i, s in enumerate(propios, 1):
         if s.get('verdict') == 'OK':
             return {'encontrado': True, 'resuelto': True, 'envios': i,
-                    'tiempo_s': max(0, s['creationTimeSeconds'] - desde_unix), 'ultimo_veredicto': 'OK'}
+                    'tiempo_s': max(0, s['creationTimeSeconds'] - desde_unix), 'ultimo_veredicto': 'Aceptado'}
     return {'encontrado': True, 'resuelto': False, 'envios': len(propios),
             'tiempo_s': max(0, propios[-1]['creationTimeSeconds'] - desde_unix),
-            'ultimo_veredicto': propios[-1].get('verdict', '')}
+            'ultimo_veredicto': VEREDICTOS.get(propios[-1].get('verdict', ''), propios[-1].get('verdict', ''))}

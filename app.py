@@ -8,6 +8,14 @@ ICONO_FAVICON = '🎓'
 
 st.set_page_config(page_title=NOMBRE_APP, page_icon=ICONO_FAVICON, layout='wide')
 
+# Oculta los textos de ayuda que Streamlit muestra en inglés
+# ("Press Enter to submit form", "Running...", barra de herramientas de las tablas).
+st.markdown('''<style>
+[data-testid="InputInstructions"] {display: none !important;}
+[data-testid="stStatusWidget"] {visibility: hidden;}
+[data-testid="stElementToolbar"] {display: none !important;}
+</style>''', unsafe_allow_html=True)
+
 
 @st.cache_resource(show_spinner='Cargando el modelo de recomendación...')
 def motor():

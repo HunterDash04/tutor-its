@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 import streamlit as st
 
@@ -39,37 +37,3 @@ def estudiantes():
         st.info('Este estudiante aún no completó su perfil inicial.')
     else:
         progreso(u)
-
-
-def _mostrar(carpeta, archivo, tipo='texto'):
-    ruta = os.path.join(carpeta, archivo)
-    if not os.path.exists(ruta):
-        st.warning(f'No se encontró {ruta}.')
-        return
-    if tipo == 'imagen':
-        st.image(ruta, width='stretch')
-    elif tipo == 'tabla':
-        st.dataframe(pd.read_csv(ruta), hide_index=True, width='stretch')
-    else:
-        st.code(open(ruta, encoding='utf-8').read(), language=None)
-
-
-def metricas():
-    a, b = st.tabs(['Diagnóstico del estado cognitivo (OULAD)', 'Recomendador híbrido (Codeforces)'])
-    with a:
-        st.markdown('Comparación de algoritmos con validación cruzada agrupada por estudiante y evaluación final en datos no vistos.')
-        _mostrar('resultados_modelo_a', 'tabla_comparativa_modelos.csv', 'tabla')
-        c1, c2 = st.columns(2)
-        with c1:
-            _mostrar('resultados_modelo_a', 'comparacion_modelos.png', 'imagen')
-        with c2:
-            _mostrar('resultados_modelo_a', 'matriz_confusion.png', 'imagen')
-        _mostrar('resultados_modelo_a', 'importancia_variables.png', 'imagen')
-        with st.expander('Resultados completos'):
-            _mostrar('resultados_modelo_a', 'resultados_finales.txt')
-    with b:
-        st.markdown('Predicción del éxito al primer envío en usuarios que el modelo nunca vio durante el entrenamiento.')
-        _mostrar('resultados_recomendador', 'tabla_recomendador.csv', 'tabla')
-        _mostrar('resultados_recomendador', 'comparacion_recomendador.png', 'imagen')
-        with st.expander('Resultados completos'):
-            _mostrar('resultados_recomendador', 'resultados_recomendador.txt')
