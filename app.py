@@ -92,11 +92,7 @@ def main():
     barra_lateral(u)
     if u['rol'] == 'docente':
         st.title('Panel docente')
-        t1, t2 = st.tabs(['Estudiantes', 'Métricas de los modelos'])
-        with t1:
-            vistas_docente.estudiantes()
-        with t2:
-            vistas_docente.metricas()
+        vistas_docente.estudiantes()
         return
     if u['habilidad_inicial'] is None:
         vistas_estudiante.bienvenida(u)
