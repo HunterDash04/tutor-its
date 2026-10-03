@@ -1,0 +1,28 @@
+Datos: 250,394 primeros intentos reales, 1500 usuarios, 7839 problemas (Codeforces).
+Usuarios de prueba (nunca vistos en entrenamiento): 300
+
+                       Método    AUC  LogLoss  Brier  Accuracy  Precision@5_fallos
+                         Azar 0.5038   0.9964 0.3313    0.5046              0.3877
+Elo (habilidad vs dificultad) 0.6739   0.7130 0.2370    0.6415              0.5675
+    PFA (regresión logística) 0.6760   0.6267 0.2181    0.6499              0.5733
+         Dificultad colectiva 0.7217   0.5952 0.2050    0.6755              0.7069
+  Regresión logística (todas) 0.7517   0.5723 0.1950    0.6997              0.7004
+                Random Forest 0.7519   0.5717 0.1949    0.6988              0.6794
+  Híbrido (Gradient Boosting) 0.7542   0.5695 0.1940    0.7005              0.7011
+
+Modelo híbrido — AUC 0.7542 (IC95% por usuarios: [0.7468, 0.7608])
+Elo solo — IC95% AUC: [0.6641, 0.6846]
+Detección de problemas que el estudiante fallará (Precision@5, 277 usuarios): híbrido 0.701 vs azar 0.372; Wilcoxon W=27576, p=1.18e-35
+
+Calibración (prob. predicha vs tasa real de éxito):
+                               predicho   real     n
+p_Híbrido (Gradient Boosting)                       
+(0.0, 0.2]                        0.153  0.145  1455
+(0.2, 0.3]                        0.255  0.250  3602
+(0.3, 0.4]                        0.352  0.348  5576
+(0.4, 0.5]                        0.451  0.452  7039
+(0.5, 0.6]                        0.551  0.555  8063
+(0.6, 0.7]                        0.650  0.653  8203
+(0.7, 0.8]                        0.751  0.746  8272
+(0.8, 0.9]                        0.852  0.848  8885
+(0.9, 1.0]                        0.928  0.934  3539
