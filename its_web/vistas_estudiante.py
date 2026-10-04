@@ -73,12 +73,45 @@ def _tarjetas(res):
     st.write('')
 
 
+def _al_verificar(usuario, it):
+    try:
+        r = verificar_envios(usuario['handle_cf'], it['id_problema'], it['mostrado_en'])
+    except ErrorCodeforces as e:
+        st.session_state['aviso_verificacion'] = ('error', str(e))
+        return
+    if not r['encontrado']:
+        st.session_state['aviso_verificacion'] = (
+            'warning', 'Todavía no hay envíos tuyos a este problema desde que se te recomendó.')
+    elif r['resuelto']:
+        diag = servicio.registrar(usuario, it, 'resuelto', r['envios'], 'codeforces', r['tiempo_s'])
+        st.session_state['ultimo_diagnostico'] = (
+            f"Verificado en Codeforces: resuelto en {r['envios']} envío(s), "
+            f"{_min(r['tiempo_s'])}. Nuevo estado: {diag}.")
+    else:
+        st.session_state['aviso_verificacion'] = (
+            'warning', f"Encontramos {r['envios']} envío(s) sin aceptar (último: {r['ultimo_veredicto']}). "
+                       'Sigue intentando, o regístralo como no resuelto abajo.')
+
+
+def _al_registrar(usuario, it):
+    resultado = 'resuelto' if st.session_state['res_manual'] == 'Sí' else 'no_resuelto'
+    diag = servicio.registrar(usuario, it, resultado, st.session_state['envios_manual'], 'manual')
+    st.session_state['ultimo_diagnostico'] = f'Resultado registrado. Nuevo estado: {diag}.'
+
+
+def _al_saltar(usuario, it):
+    servicio.registrar(usuario, it, 'omitido', None, 'manual')
+    st.session_state['ultimo_diagnostico'] = 'Ejercicio omitido. No afecta tu estimación de habilidad.'
+
+
 def practicar(motor, usuario):
+    # Las acciones se ejecutan en callbacks (antes de dibujar la página) y los mensajes
+    # ocupan espacios fijos; así la pantalla no se duplica mientras se actualiza.
     res = servicio.resumen(usuario)
     _tarjetas(res)
+    aviso = st.empty()
     if 'ultimo_diagnostico' in st.session_state:
-        d = st.session_state.pop('ultimo_diagnostico')
-        st.info(d)
+        aviso.info(st.session_state.pop('ultimo_diagnostico'))
 
     it = servicio.recomendacion_actual(motor, usuario)
     st.divider()
@@ -99,36 +132,18 @@ def practicar(motor, usuario):
         st.markdown('#### Registrar resultado')
         if usuario.get('handle_cf'):
             st.caption(f"Cuenta de Codeforces vinculada: **{usuario['handle_cf']}**")
-            if st.button('Verificar en Codeforces', width='stretch'):
-                try:
-                    r = verificar_envios(usuario['handle_cf'], it['id_problema'], it['mostrado_en'])
-                except ErrorCodeforces as e:
-                    st.error(str(e))
-                else:
-                    if not r['encontrado']:
-                        st.warning('Todavía no hay envíos tuyos a este problema desde que se te recomendó.')
-                    elif r['resuelto']:
-                        diag = servicio.registrar(usuario, it, 'resuelto', r['envios'], 'codeforces', r['tiempo_s'])
-                        st.session_state['ultimo_diagnostico'] = (
-                            f"Verificado en Codeforces: resuelto en {r['envios']} envío(s), "
-                            f"{_min(r['tiempo_s'])}. Nuevo estado: {diag}.")
-                        st.rerun()
-                    else:
-                        st.warning(f"Encontramos {r['envios']} envío(s) sin aceptar (último: {r['ultimo_veredicto']}). "
-                                   'Sigue intentando, o regístralo como no resuelto abajo.')
+            st.button('Verificar en Codeforces', width='stretch', on_click=_al_verificar, args=(usuario, it))
+            mensaje = st.empty()
+            if 'aviso_verificacion' in st.session_state:
+                tipo, texto = st.session_state.pop('aviso_verificacion')
+                getattr(mensaje, tipo)(texto)
             st.caption('…o regístralo manualmente:')
         with st.form('resultado_manual', clear_on_submit=True):
-            resultado = st.radio('¿Lo resolviste?', ['Sí', 'No'], horizontal=True)
-            envios = st.number_input('Número de envíos realizados', 1, 100, 1)
-            ok = st.form_submit_button('Registrar', type='primary', width='stretch')
-        if ok:
-            diag = servicio.registrar(usuario, it, 'resuelto' if resultado == 'Sí' else 'no_resuelto', envios, 'manual')
-            st.session_state['ultimo_diagnostico'] = f'Resultado registrado. Nuevo estado: {diag}.'
-            st.rerun()
-        if st.button('Saltar este ejercicio', width='stretch'):
-            servicio.registrar(usuario, it, 'omitido', None, 'manual')
-            st.session_state['ultimo_diagnostico'] = 'Ejercicio omitido. No afecta tu estimación de habilidad.'
-            st.rerun()
+            st.radio('¿Lo resolviste?', ['Sí', 'No'], horizontal=True, key='res_manual')
+            st.number_input('Número de envíos realizados', 1, 100, 1, key='envios_manual')
+            st.form_submit_button('Registrar', type='primary', width='stretch',
+                                  on_click=_al_registrar, args=(usuario, it))
+        st.button('Saltar este ejercicio', width='stretch', on_click=_al_saltar, args=(usuario, it))
 
 
 def progreso(usuario):
