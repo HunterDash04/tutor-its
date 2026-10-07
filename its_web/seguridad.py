@@ -5,7 +5,12 @@ import re
 import secrets
 import string
 
-ITERACIONES = 200_000
+# Recomendación de OWASP (Password Storage Cheat Sheet) para PBKDF2-HMAC-SHA256
+ITERACIONES = 600_000
+
+# Bloqueo ante intentos fallidos de inicio de sesión
+MAX_INTENTOS = 5
+MINUTOS_BLOQUEO = 15
 
 
 def hashear(clave: str) -> str:
@@ -19,6 +24,14 @@ def verificar(clave: str, guardado: str) -> bool:
         _, it, sal, h = guardado.split('$')
         calc = hashlib.pbkdf2_hmac('sha256', clave.encode('utf-8'), bytes.fromhex(sal), int(it))
         return hmac.compare_digest(calc.hex(), h)
+    except Exception:
+        return False
+
+
+def necesita_actualizar(guardado: str) -> bool:
+    """True si la contraseña se cifró con menos iteraciones de las vigentes (se actualiza al iniciar sesión)."""
+    try:
+        return int(guardado.split('$')[1]) < ITERACIONES
     except Exception:
         return False
 

@@ -54,13 +54,7 @@ def _formulario_acceso():
             clave = st.text_input('Contraseña', type='password')
             ok = st.form_submit_button('Entrar', type='primary', width='stretch')
         if ok:
-            u = db.buscar_usuario(usuario)
-            if u and seguridad.verificar(clave, u['hash']):
-                db.actualizar_usuario(u['id'], ultimo_acceso=db.ahora())
-                st.session_state['uid'] = u['id']
-                st.rerun()
-            else:
-                st.error('Usuario o contraseña incorrectos.')
+            _procesar_ingreso(usuario, clave)
     with registrarse:
         with st.expander('Aviso de privacidad y tratamiento de datos personales'):
             st.markdown(TEXTO_AVISO)
@@ -86,6 +80,30 @@ def _formulario_acceso():
                 db.registrar_consentimiento(uid, VERSION_AVISO)
                 st.session_state['uid'] = uid
                 st.rerun()
+
+
+def _procesar_ingreso(usuario, clave):
+    """Verifica las credenciales con bloqueo tras varios intentos fallidos."""
+    espera = db.segundos_bloqueo(usuario)
+    if espera:
+        st.error(f'Demasiados intentos fallidos. Por seguridad, la cuenta está bloqueada; '
+                 f'intenta de nuevo en {-(-espera // 60)} min.')
+        return
+    u = db.buscar_usuario(usuario)
+    if u and seguridad.verificar(clave, u['hash']):
+        db.limpiar_fallos(usuario)
+        cambios = {'ultimo_acceso': db.ahora()}
+        if seguridad.necesita_actualizar(u['hash']):   # cuentas creadas con el cifrado anterior
+            cambios['hash'] = seguridad.hashear(clave)
+        db.actualizar_usuario(u['id'], **cambios)
+        st.session_state['uid'] = u['id']
+        st.rerun()
+    restantes = db.registrar_fallo(usuario, seguridad.MAX_INTENTOS, seguridad.MINUTOS_BLOQUEO)
+    if restantes == 0:
+        st.error(f'Usuario o contraseña incorrectos. Se alcanzó el máximo de {seguridad.MAX_INTENTOS} intentos: '
+                 f'la cuenta quedó bloqueada por {seguridad.MINUTOS_BLOQUEO} min.')
+    else:
+        st.error(f'Usuario o contraseña incorrectos. Te quedan {restantes} intento(s).')
 
 
 def barra_lateral(u):

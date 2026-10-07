@@ -51,6 +51,15 @@ consentimientos = Table(
     Column('aceptado_en', Integer, nullable=False),
 )
 
+# Intentos fallidos de inicio de sesión por nombre de usuario (también para nombres inexistentes,
+# para no revelar qué cuentas existen). Es una tabla nueva: create_all la crea sin modificar las demás.
+bloqueos = Table(
+    'bloqueos_acceso', metadata,
+    Column('usuario', String(60), primary_key=True),
+    Column('fallos', Integer, nullable=False, default=0),
+    Column('bloqueado_hasta', Integer, nullable=False, default=0),
+)
+
 
 def _url():
     try:
@@ -140,3 +149,36 @@ def todos_los_intentos():
 def registrar_consentimiento(uid, version):
     with motor_bd().begin() as c:
         c.execute(insert(consentimientos).values(usuario_id=uid, version_aviso=version, aceptado_en=ahora()))
+
+
+# ---------------- control de intentos de inicio de sesión ----------------
+def _clave_bloqueo(usuario):
+    return (usuario or '').strip().lower()[:60]
+
+
+def segundos_bloqueo(usuario):
+    """Segundos que faltan para desbloquear la cuenta (0 si no está bloqueada)."""
+    with motor_bd().connect() as c:
+        r = c.execute(select(bloqueos).where(bloqueos.c.usuario == _clave_bloqueo(usuario))).mappings().first()
+    return max(0, r['bloqueado_hasta'] - ahora()) if r else 0
+
+
+def registrar_fallo(usuario, max_intentos, minutos):
+    """Suma un intento fallido; al llegar al máximo bloquea la cuenta. Devuelve los intentos restantes."""
+    clave = _clave_bloqueo(usuario)
+    with motor_bd().begin() as c:
+        r = c.execute(select(bloqueos).where(bloqueos.c.usuario == clave)).mappings().first()
+        fallos = (r['fallos'] if r else 0) + 1
+        hasta = ahora() + minutos * 60 if fallos >= max_intentos else 0
+        if fallos >= max_intentos:
+            fallos = 0
+        if r:
+            c.execute(update(bloqueos).where(bloqueos.c.usuario == clave).values(fallos=fallos, bloqueado_hasta=hasta))
+        else:
+            c.execute(insert(bloqueos).values(usuario=clave, fallos=fallos, bloqueado_hasta=hasta))
+    return 0 if hasta else max_intentos - fallos
+
+
+def limpiar_fallos(usuario):
+    with motor_bd().begin() as c:
+        c.execute(update(bloqueos).where(bloqueos.c.usuario == _clave_bloqueo(usuario)).values(fallos=0, bloqueado_hasta=0))
